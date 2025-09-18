@@ -94,21 +94,20 @@ def test_generate_intermediate_standalone(runner, tmp_path):
 
 def test_overwrite_protection(runner, tmp_path):
     """
-    Tests that the script aborts if files exist and the user declines to overwrite.
+    Tests that the script raises exception if root CA files already exist.
     """
     output_dir = tmp_path / "pki"
     output_dir.mkdir()
     (output_dir / "root-ca.key").touch() # Create a dummy file
 
-    # The input 'N' should cause the script to abort
+    # Should raise exception when root CA files exist (no input needed)
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir)],
-        input="N\n"
+        ['generate-root', '--out-dir', str(output_dir)]
     )
 
     assert result.exit_code == 1
-    assert "Aborted!" in result.output
+    assert result.exception is not None
 
 def test_pki_tool_error_handling(runner, tmp_path):
     """
@@ -151,3 +150,51 @@ def test_pki_tool_error_handling(runner, tmp_path):
     )
     assert result.exit_code == 0
     assert "Writing rsa2048 private key" in result.output
+
+def test_intermediate_ca_files_exist_protection(runner, tmp_path):
+    """
+    Tests that the script raises exception if intermediate CA files already exist.
+    """
+    output_dir = tmp_path / "pki"
+    output_dir.mkdir()
+
+    # First create a root CA
+    result = runner.invoke(
+        cli,
+        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'ed25519'],
+        input=root_and_intermediate_input_data
+    )
+    assert result.exit_code == 0
+
+    # Now create dummy intermediate files to trigger the protection
+    (output_dir / "intermediate-ca.key").touch()
+
+    # Try to generate intermediate again - should raise exception before asking for input
+    result = runner.invoke(
+        cli,
+        [
+            'generate-intermediate',
+            '--root-ca-cert', str(output_dir / "root-ca.crt"),
+            '--root-ca-key', str(output_dir / "root-ca.key"),
+            '--out-dir', str(output_dir)
+        ],
+        input="root-password\n"  # Just in case it gets to password prompt
+    )
+
+    assert result.exit_code == 1
+    assert result.exception is not None
+
+def test_unsupported_key_type_in_create_private_key(tmp_path):
+    """
+    Tests that create_private_key raises exception for unsupported key types.
+    """
+    from generate_pki import create_private_key
+    import pytest
+
+    key_path = tmp_path / "test.key"
+
+    # Test unsupported key type like DSA
+    with pytest.raises(Exception) as excinfo:
+        create_private_key(str(key_path), "test-passphrase", "dsa")
+
+    assert "Unsupported key type 'dsa'" in str(excinfo.value)

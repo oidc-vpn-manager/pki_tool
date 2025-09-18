@@ -1,2 +1,5 @@
-click
-cryptography
+# CLI Framework
+click==8.1.7
+
+# Security & Cryptography
+cryptography==44.0.1

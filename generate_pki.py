@@ -36,7 +36,7 @@ def create_private_key(key_path, passphrase, key_type='ed25519'):
             key_size=key_size,
         )
     else:
-        raise click.BadParameter(f"Unsupported key type '{key_type}'.") # pragma: no cover
+        raise click.BadParameter(f"Unsupported key type '{key_type}'.")
 
     click.echo(f"  -> Writing {key_type} private key to {key_path}")
     with open(key_path, "wb") as f:
@@ -74,7 +74,7 @@ def _generate_intermediate(root_cert, root_ca_key, out_dir, lifespan_years, key_
     int_cert_path = os.path.join(out_dir, 'intermediate-ca.crt')
 
     if os.path.exists(int_key_path) or os.path.exists(int_cert_path):
-        click.confirm(f"Intermediate CA files already exist in {out_dir}. Overwrite?", abort=True) # pragma: no cover
+        raise Exception(f"Intermediate CA files already exist in {out_dir}.")
 
     # Correct way to extract attributes from the subject
     defaults = {
@@ -134,7 +134,7 @@ def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type):
     root_cert_path = os.path.join(out_dir, 'root-ca.crt')
 
     if os.path.exists(root_key_path) or os.path.exists(root_cert_path):
-        click.confirm(f"Root CA files already exist in {out_dir}. Overwrite?", abort=True)
+        raise Exception(f"Root CA files already exist in {out_dir}.")
 
     root_subject_fields = prompt_for_subject_fields()
     root_passphrase = click.prompt("Enter a new passphrase for the Root CA private key", hide_input=True, confirmation_prompt=True)
@@ -193,5 +193,6 @@ def generate_intermediate(root_ca_cert, root_ca_key, out_dir, intermediate_lifes
     
     _generate_intermediate(root_cert, root_key, out_dir, intermediate_lifespan, key_type)
 
-if __name__ == '__main__':
-    cli() # pragma: no cover
+if __name__ == '__main__': # pragma: no cover
+    ## PRAGMA-NO-COVER Exception; JS 2025-09-18 Invoking this function only triggers code paths tested elsewhere.
+    cli()
