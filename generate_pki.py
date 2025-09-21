@@ -12,6 +12,8 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 
+from entropy_validator import validate_entropy_for_key_generation
+
 # --- Helper Functions ---
 
 def prompt_for_subject_fields(defaults=None):
@@ -25,8 +27,15 @@ def prompt_for_subject_fields(defaults=None):
         "common_name": click.prompt("Common Name (e.g., FQDN)", default=defaults.get("CN")),
     }
 
-def create_private_key(key_path, passphrase, key_type='ed25519'):
+def create_private_key(key_path, passphrase, key_type='ed25519', skip_entropy_validation=False):
     """Generates and saves an encrypted private key."""
+    # Validate entropy before key generation (unless skipped for testing)
+    if not skip_entropy_validation:
+        click.echo(f"Validating entropy for {key_type} key generation...")
+        if not validate_entropy_for_key_generation(key_type):
+            raise click.ClickException("Entropy validation failed. Key generation aborted for security.")
+
+    click.echo(f"Generating {key_type} private key...")
     if key_type == 'ed25519':
         private_key = ed25519.Ed25519PrivateKey.generate()
     elif key_type in ['rsa2048', 'rsa4096']:
@@ -45,7 +54,7 @@ def create_private_key(key_path, passphrase, key_type='ed25519'):
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.BestAvailableEncryption(passphrase.encode())
         ))
-    
+
     os.chmod(key_path, 0o600)
     return private_key
 
@@ -67,7 +76,7 @@ def build_subject_name(fields):
         }.items() if value
     ])
 
-def _generate_intermediate(root_cert, root_ca_key, out_dir, lifespan_years, key_type):
+def _generate_intermediate(root_cert, root_ca_key, out_dir, lifespan_years, key_type, skip_entropy_validation=False):
     """Shared logic to generate an intermediate CA."""
     click.secho("\n--- Generating a new Intermediate CA ---", bold=True)
     int_key_path = os.path.join(out_dir, 'intermediate-ca.key')
@@ -86,7 +95,7 @@ def _generate_intermediate(root_cert, root_ca_key, out_dir, lifespan_years, key_
     int_subject_fields = prompt_for_subject_fields(defaults=defaults)
     
     intermediate_passphrase = click.prompt("Enter a new passphrase for the Intermediate CA private key", hide_input=True, confirmation_prompt=True)
-    intermediate_key = create_private_key(int_key_path, intermediate_passphrase, key_type)
+    intermediate_key = create_private_key(int_key_path, intermediate_passphrase, key_type, skip_entropy_validation)
     intermediate_subject = build_subject_name(int_subject_fields)
 
     intermediate_cert = x509.CertificateBuilder().subject_name(
@@ -125,7 +134,8 @@ def cli():
 @click.option('--root-lifespan', default=30, type=int, help='Lifespan of the Root CA in years.')
 @click.option('--intermediate-lifespan', default=10, type=int, help='Lifespan of the Intermediate CA in years.')
 @click.option('--key-type', default='ed25519', type=click.Choice(['ed25519', 'rsa2048', 'rsa4096']), help='The type of private key to generate.')
-def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type):
+@click.option('--skip-entropy-validation', is_flag=True, help='Skip entropy validation (for testing only).')
+def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type, skip_entropy_validation):
     """Generates a new Root CA and its first Intermediate CA."""
     
     click.secho("--- Generating a new Root CA ---", bold=True)
@@ -138,7 +148,7 @@ def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type):
 
     root_subject_fields = prompt_for_subject_fields()
     root_passphrase = click.prompt("Enter a new passphrase for the Root CA private key", hide_input=True, confirmation_prompt=True)
-    root_key = create_private_key(root_key_path, root_passphrase, key_type)
+    root_key = create_private_key(root_key_path, root_passphrase, key_type, skip_entropy_validation)
     root_subject = build_subject_name(root_subject_fields)
     
     builder = x509.CertificateBuilder().subject_name(
@@ -167,7 +177,7 @@ def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type):
 
     click.secho("\nSuccess! Root CA created.", fg="green")
     
-    _generate_intermediate(root_cert, root_key, out_dir, intermediate_lifespan, key_type)
+    _generate_intermediate(root_cert, root_key, out_dir, intermediate_lifespan, key_type, skip_entropy_validation)
     
     click.secho("\n--- PKI Generation Complete ---", bold=True)
     click.echo("IMPORTANT: Securely back up the root-ca.key file and its passphrase. It is not recoverable.")
@@ -177,7 +187,8 @@ def generate_root(out_dir, root_lifespan, intermediate_lifespan, key_type):
 @click.option('--root-ca-key', required=True, type=click.Path(exists=True), help='Path to the Root CA private key file.')
 @click.option('--out-dir', default='./pki', help='Directory to save the new intermediate files.')
 @click.option('--intermediate-lifespan', default=10, type=int, help='Lifespan of the Intermediate CA in years.')
-def generate_intermediate(root_ca_cert, root_ca_key, out_dir, intermediate_lifespan):
+@click.option('--skip-entropy-validation', is_flag=True, help='Skip entropy validation (for testing only).')
+def generate_intermediate(root_ca_cert, root_ca_key, out_dir, intermediate_lifespan, skip_entropy_validation):
     """Generates a new Intermediate CA signed by an existing Root CA."""
     
     root_ca_passphrase = click.prompt("Enter the passphrase for the Root CA private key", hide_input=True)
@@ -191,7 +202,7 @@ def generate_intermediate(root_ca_cert, root_ca_key, out_dir, intermediate_lifes
     else:
         key_type = 'ed25519'
     
-    _generate_intermediate(root_cert, root_key, out_dir, intermediate_lifespan, key_type)
+    _generate_intermediate(root_cert, root_key, out_dir, intermediate_lifespan, key_type, skip_entropy_validation)
 
 if __name__ == '__main__': # pragma: no cover
     ## PRAGMA-NO-COVER Exception; JS 2025-09-18 Invoking this function only triggers code paths tested elsewhere.

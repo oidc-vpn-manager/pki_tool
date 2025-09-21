@@ -45,7 +45,7 @@ def test_generate_root_and_intermediate(tmp_path):
 
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir)],
+        ['generate-root', '--out-dir', str(output_dir), '--skip-entropy-validation'],
         input=root_and_intermediate_input_data
     )
 
@@ -68,7 +68,7 @@ def test_generate_intermediate_standalone(runner, tmp_path):
     # --- First, create a root CA to sign with ---
     runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir)],
+        ['generate-root', '--out-dir', str(output_dir), '--skip-entropy-validation'],
         input=root_and_intermediate_input_data
     )
     
@@ -83,7 +83,8 @@ def test_generate_intermediate_standalone(runner, tmp_path):
             'generate-intermediate',
             '--root-ca-cert', str(output_dir / "root-ca.crt"),
             '--root-ca-key', str(output_dir / "root-ca.key"),
-            '--out-dir', str(output_dir)
+            '--out-dir', str(output_dir),
+            '--skip-entropy-validation'
         ],
         input=intermediate_input_data
     )
@@ -103,7 +104,7 @@ def test_overwrite_protection(runner, tmp_path):
     # Should raise exception when root CA files exist (no input needed)
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir)]
+        ['generate-root', '--out-dir', str(output_dir), '--skip-entropy-validation']
     )
 
     assert result.exit_code == 1
@@ -118,7 +119,7 @@ def test_pki_tool_error_handling(runner, tmp_path):
     # Test 1: Unsupported key type for root generation
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'dsa'],
+        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'dsa', '--skip-entropy-validation'],
         input="some\ninput\n"
     )
     assert result.exit_code != 0
@@ -127,7 +128,7 @@ def test_pki_tool_error_handling(runner, tmp_path):
     # Test 2: Generate a root CA with an RSA key to test the next step
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'rsa2048'],
+        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'rsa2048', '--skip-entropy-validation'],
         input=root_and_intermediate_input_data
     )
     # Check that the first part succeeded before proceeding
@@ -144,7 +145,8 @@ def test_pki_tool_error_handling(runner, tmp_path):
             'generate-intermediate',
             '--root-ca-cert', str(output_dir / "root-ca.crt"),
             '--root-ca-key', str(output_dir / "root-ca.key"),
-            '--out-dir', str(output_dir)
+            '--out-dir', str(output_dir),
+            '--skip-entropy-validation'
         ],
         input=intermediate_input_data
     )
@@ -161,7 +163,7 @@ def test_intermediate_ca_files_exist_protection(runner, tmp_path):
     # First create a root CA
     result = runner.invoke(
         cli,
-        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'ed25519'],
+        ['generate-root', '--out-dir', str(output_dir), '--key-type', 'ed25519', '--skip-entropy-validation'],
         input=root_and_intermediate_input_data
     )
     assert result.exit_code == 0
@@ -176,7 +178,8 @@ def test_intermediate_ca_files_exist_protection(runner, tmp_path):
             'generate-intermediate',
             '--root-ca-cert', str(output_dir / "root-ca.crt"),
             '--root-ca-key', str(output_dir / "root-ca.key"),
-            '--out-dir', str(output_dir)
+            '--out-dir', str(output_dir),
+            '--skip-entropy-validation'
         ],
         input="root-password\n"  # Just in case it gets to password prompt
     )
@@ -195,6 +198,22 @@ def test_unsupported_key_type_in_create_private_key(tmp_path):
 
     # Test unsupported key type like DSA
     with pytest.raises(Exception) as excinfo:
-        create_private_key(str(key_path), "test-passphrase", "dsa")
+        create_private_key(str(key_path), "test-passphrase", "dsa", skip_entropy_validation=True)
 
     assert "Unsupported key type 'dsa'" in str(excinfo.value)
+
+
+def test_create_private_key_entropy_validation_failure(tmp_path):
+    """Test entropy validation failure in create_private_key - covers lines 34-36."""
+    from generate_pki import create_private_key
+    from unittest.mock import patch
+    import click
+
+    key_path = tmp_path / "test-key.pem"
+
+    # Mock entropy validation to fail
+    with patch('generate_pki.validate_entropy_for_key_generation', return_value=False):
+        with pytest.raises(click.ClickException) as excinfo:
+            create_private_key(str(key_path), "test-passphrase", "ed25519", skip_entropy_validation=False)
+
+        assert "Entropy validation failed. Key generation aborted for security." in str(excinfo.value)
