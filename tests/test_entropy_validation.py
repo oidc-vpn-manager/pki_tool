@@ -360,13 +360,16 @@ class TestEntropyValidatorMainExecution:
         """Test entropy validator when run as main module - covers lines 286-287."""
         import subprocess
         import sys
+        from pathlib import Path
 
         # Test the __main__ execution by running the entropy_validator module as main
+        # Use dynamic path resolution based on current test file location
+        script_path = Path(__file__).parent.parent / 'entropy_validator.py'
         result = subprocess.run(
-            [sys.executable, "/workspaces/2025-06_openvpn-manager_gh-org/tools/pki_tool/entropy_validator.py"],
+            [sys.executable, str(script_path)],
             capture_output=True,
             text=True,
-            cwd="/workspaces/2025-06_openvpn-manager_gh-org/tools/pki_tool"
+            cwd=str(script_path.parent)
         )
 
         assert result.returncode == 0
