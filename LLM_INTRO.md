@@ -198,7 +198,7 @@ kubectl create secret generic openvpn-pki \
   --from-file=root-ca.crt=output-dir/root-ca.crt \
   --from-file=intermediate-ca.crt=output-dir/intermediate-ca.crt \
   --from-file=intermediate-ca.key=output-dir/intermediate-ca.key \
-  -n openvpn-manager
+  -n oidc-vpn-manager
 ```
 
 ## Common Operations

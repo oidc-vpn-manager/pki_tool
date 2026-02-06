@@ -257,11 +257,11 @@ cp pki/intermediate-ca.crt deploy/docker/pki/
 cp pki/intermediate-ca.key deploy/docker/pki/
 
 # For Kubernetes deployment
-kubectl create secret generic openvpn-manager-pki \
+kubectl create secret generic oidc-vpn-manager-pki \
   --from-file=root-ca.crt=pki/root-ca.crt \
   --from-file=intermediate-ca.crt=pki/intermediate-ca.crt \
   --from-file=intermediate-ca.key=pki/intermediate-ca.key \
-  -n openvpn-manager
+  -n oidc-vpn-manager
 ```
 
 ### Service Configuration
