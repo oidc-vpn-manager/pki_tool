@@ -1,6 +1,6 @@
 # PKI Generation Tool
 
-A command-line tool for generating Root and Intermediate Certificate Authorities (CAs) for OpenVPN Manager. This tool creates the foundational PKI materials needed to operate a secure OpenVPN certificate management system.
+A command-line tool for generating Root and Intermediate Certificate Authorities (CAs) for OIDC VPN Manager. This tool creates the foundational PKI materials needed to operate a secure OpenVPN certificate management system.
 
 ## 🔐 Security Architecture
 
@@ -244,11 +244,11 @@ openssl verify -CAfile pki/root-ca.crt pki/intermediate-ca.crt
 openssl rsa -in pki/root-ca.key -check -noout
 ```
 
-## 🔄 Integration with OpenVPN Manager
+## 🔄 Integration with OIDC VPN Manager
 
 ### Deployment Integration
 
-Copy generated PKI materials to OpenVPN Manager:
+Copy generated PKI materials to OIDC VPN Manager:
 
 ```bash
 # For Docker deployment
@@ -266,7 +266,7 @@ kubectl create secret generic oidc-vpn-manager-pki \
 
 ### Service Configuration
 
-Configure OpenVPN Manager services to use the generated PKI:
+Configure OIDC VPN Manager services to use the generated PKI:
 
 ```bash
 # Frontend service environment

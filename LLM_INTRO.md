@@ -1,10 +1,10 @@
 # PKI Tool
 
-This file provides LLMs with guidance for working with the PKI Tool component of OpenVPN Manager.
+This file provides LLMs with guidance for working with the PKI Tool component of OIDC VPN Manager.
 
 ## Tool Overview
 
-The PKI Tool is a command-line utility for generating Root and Intermediate Certificate Authorities (CAs) for OpenVPN Manager. It creates the foundational PKI materials needed to operate a secure OpenVPN certificate management system with modern cryptographic standards.
+The PKI Tool is a command-line utility for generating Root and Intermediate Certificate Authorities (CAs) for OIDC VPN Manager. It creates the foundational PKI materials needed to operate a secure OpenVPN certificate management system with modern cryptographic standards.
 
 ## Architecture
 
@@ -167,7 +167,7 @@ output-dir/
 - **Security Tests**: Cryptographic validation and security checks
 - **Compatibility Tests**: Different key types and configurations
 
-## Integration with OpenVPN Manager
+## Integration with OIDC VPN Manager
 
 ### Service Integration
 ```bash
