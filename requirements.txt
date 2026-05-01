@@ -2,4 +2,4 @@
 click==8.3.1
 
 # Security & Cryptography
-cryptography==46.0.5
+cryptography==46.0.7
